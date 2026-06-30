@@ -6,7 +6,7 @@ import type { User } from "../../generated/prisma/client.js";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-export const googleCallback: RequestHandler = async (req, res) => {
+export const authCallback: RequestHandler = async (req, res) => {
     const user = req.user as User;
 
     const token = jwt.sign({
@@ -16,6 +16,7 @@ export const googleCallback: RequestHandler = async (req, res) => {
 
     return res.json({token})
 }
+
 
 export const getMe: RequestHandler = async (req, res) => {
     const me = await prisma.user.findUnique({where: {id: req.user.id}});

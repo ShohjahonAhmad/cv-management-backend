@@ -1,6 +1,7 @@
 import express from 'express';
 import passport from 'passport';
 import authRoute from "./routes/auth.js";
+import userRoute from "./routes/user.js";
 import "./config/passport.js";
 import "dotenv/config"
 import authenticated from './middleware/authenticated.js';
@@ -12,6 +13,7 @@ app.use(express.json());
 
 app.use("/auth", authRoute);
 app.use(authenticated)
+app.use("/users", userRoute);
 const PORT = process.env.PORT || 9090;
 
 app.listen(PORT, () => {

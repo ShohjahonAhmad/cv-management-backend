@@ -20,7 +20,7 @@ enum Role {
 
 enum Provider {
   GOOGLE
-  FACEBOOK
+  GITHUB
 }
 
 model User {
