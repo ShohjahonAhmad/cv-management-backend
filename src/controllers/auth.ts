@@ -5,6 +5,7 @@ import "dotenv/config";
 import type { User } from "../../generated/prisma/client.js";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 export const authCallback: RequestHandler = async (req, res) => {
     const user = req.user as User;
@@ -14,7 +15,7 @@ export const authCallback: RequestHandler = async (req, res) => {
         role: user.role,
     }, JWT_SECRET, {expiresIn: "24h"})
 
-    return res.json({token})
+    return res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`)
 }
 
 
