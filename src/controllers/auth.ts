@@ -22,5 +22,5 @@ export const authCallback: RequestHandler = async (req, res) => {
 export const getMe: RequestHandler = async (req, res) => {
     const me = await prisma.user.findUnique({where: {id: req.user.id}});
 
-    res.json(me)
+    res.json(me)///
 }
