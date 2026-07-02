@@ -5,11 +5,13 @@ import userRoute from "./routes/user.js";
 import "./config/passport.js";
 import "dotenv/config"
 import authenticated from './middleware/authenticated.js';
+import cors from "cors";
 
 const app = express();
 
 app.use(passport.initialize());
 app.use(express.json());
+app.use(cors())
 
 app.use("/auth", authRoute);
 app.use(authenticated)
