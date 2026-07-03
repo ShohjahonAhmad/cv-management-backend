@@ -5,7 +5,7 @@ import "dotenv/config";
 import type { User } from "../../generated/prisma/client.js";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL!;
 
 export const authCallback: RequestHandler = async (req, res) => {
     const user = req.user as User;
