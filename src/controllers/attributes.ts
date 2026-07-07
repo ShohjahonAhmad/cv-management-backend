@@ -1,19 +1,25 @@
 import type {RequestHandler} from "express";
 import prisma from "../prisma.js";
-import { Prisma } from "../../generated/prisma/client.js";
-import type { DeleteAttributesDto, UpdateAttributeDto } from "../middleware/schema.js";
+import { AttributeCategory, AttributeType, Prisma } from "../../generated/prisma/client.js";
+import type { DeleteAttributesDto} from "../middleware/schema.js";
 
 export const getAttributes: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.max(1, Number(req.query.take) || 10);
+    const filter = req.query.filter?.toString() ;
     const search = req.query.search?.toString() ;
-    const where = {
-        ...(search && {
-            name: {
-                startsWith: search,
-                mode: "insensitive" as const
-            }
-        })
+
+    const where: Prisma.AttributeWhereInput = {};
+
+    if (search) {
+        where.name = {
+            startsWith: search,
+            mode: "insensitive",
+        };
+    }
+
+    if (filter) {
+        where.category = filter as AttributeCategory;
     }
 
     const attributes = await prisma.attribute.findMany({
@@ -34,16 +40,24 @@ export const getAttributes: RequestHandler = async (req, res) => {
 
 export const createAttribute: RequestHandler = async (req, res) => {
     try {
-        const {name, description, category, type} = req.body;
+        const {name, description, category, type, options} = req.body;
+        const data: Prisma.AttributeCreateInput = {
+            name, 
+            description,
+            category,
+            type,
+        }
 
-        const attribute = await prisma.attribute.create({
-            data: {
-                name,
-                description,
-                category,
-                type
-            }
-        })
+        if(type === AttributeType.SELECT) {
+            data.attributeOptions = {
+                create: options.map((value:string, index: number) => ({
+                    value,
+                    order: index,
+                })),
+            };
+        }
+
+        const attribute = await prisma.attribute.create({data, include: {attributeOptions: true}});
 
         res.status(201).json({attribute, message: "Attribute created successfully"});
     } catch (err) {

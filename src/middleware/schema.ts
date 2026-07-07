@@ -41,6 +41,7 @@ export const AttributeSchema = z.object({
     description: z.string().trim().max(500),
     category: z.enum(AttributeCategory),
     type: z.enum(AttributeType),
+    options: z.array(z.string().trim().min(1, "Option cannot be empty").max(100, "Option must be at most 100 characters long")).optional(),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
 })
@@ -49,8 +50,25 @@ export const CreateAttributeSchema = AttributeSchema.pick({
     name: true,
     description: true,
     category: true,
-    type: true
-}).strict();
+    type: true,
+    options: true,
+}).strict().superRefine((data, ctx) => {
+    if(data.type === AttributeType.SELECT) {
+        if(!data.options || data.options.length === 0) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["options"],
+                message: "Select attributes require at least one option."
+            })
+        }
+    } else if(data.options) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["options"],
+            message: "Only Select attribute may have options."
+        })
+    }
+});
 
 export const DeleteAttributeSchema = z.object({
     attributes: z.array(SelectedSchema).min(1),
