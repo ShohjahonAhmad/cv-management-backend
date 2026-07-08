@@ -28,7 +28,14 @@ export const getAttributes: RequestHandler = async (req, res) => {
         orderBy: {
             updatedAt: "desc"
         },
-        where
+        where,
+        include: {
+            attributeOptions: {
+                orderBy: {
+                    order: 'asc'
+                }
+            }
+        }
     })
 
     const total = await prisma.attribute.count({where});
@@ -40,7 +47,7 @@ export const getAttributes: RequestHandler = async (req, res) => {
 
 export const createAttribute: RequestHandler = async (req, res) => {
     try {
-        const {name, description, category, type, options} = req.body;
+        const {name, description, category, type, attributeOptions} = req.body;
         const data: Prisma.AttributeCreateInput = {
             name, 
             description,
@@ -50,7 +57,7 @@ export const createAttribute: RequestHandler = async (req, res) => {
 
         if(type === AttributeType.SELECT) {
             data.attributeOptions = {
-                create: options.map((value:string, index: number) => ({
+                create: attributeOptions.map((value:string, index: number) => ({
                     value,
                     order: index,
                 })),
@@ -96,33 +103,96 @@ export const deleteAttribute: RequestHandler = async (req, res) => {
 
 export const updateAttribute: RequestHandler = async (req, res) => {
     try {
-        const {updatedAt, ...data} = req.body;
-        const id = Number(req.params.id as string);
-        
-        const result = await prisma.attribute.updateMany({
-            data,
-            where: {
-                id,
-                updatedAt
-            }
-        })
+        const { updatedAt, attributeOptions, ...data } = req.body;
+        const id = Number(req.params.id);
 
-        if(result.count === 0) {
+        await prisma.$transaction(async (tx) => {
+            const result = await tx.attribute.updateMany({
+                where: {
+                    id,
+                    updatedAt,
+                },
+                data,
+            });
+
+            if (result.count === 0) {
+                throw new Error("CONFLICT");
+            }
+
+            if (attributeOptions) {
+                const existingOptions = await tx.attributeOption.findMany({
+                    where: {
+                        attributeId: id,
+                    },
+                    select: {
+                        id: true,
+                    },
+                });
+
+                const existingIds = existingOptions.map(option => option.id);
+                const incomingIds = attributeOptions
+                    .filter((option: any) => option.id !== undefined)
+                    .map((option: any) => option.id);
+
+                await tx.attributeOption.deleteMany({
+                    where: {
+                        id: {
+                            in: existingIds.filter(
+                                existingId => !incomingIds.includes(existingId)
+                            ),
+                        },
+                    },
+                });
+
+                for (let i = 0; i < attributeOptions.length; i++) {
+                    const option = attributeOptions[i];
+
+                    if (option.id) {
+                        await tx.attributeOption.update({
+                            where: {
+                                id: option.id,
+                            },
+                            data: {
+                                value: option.value,
+                                order: i,
+                            },
+                        });
+                    } else {
+                        await tx.attributeOption.create({
+                            data: {
+                                attributeId: id,
+                                value: option.value,
+                                order: i,
+                            },
+                        });
+                    }
+                }
+            }
+        });
+
+        res.json({
+            message: "Attribute updated successfully",
+        });
+
+    } catch (err) {
+        if (err instanceof Error && err.message === "CONFLICT") {
             return res.status(409).json({
-                error: "The attribute was modified by another user before your changes could be saved."
+                error: "The attribute was modified by another user before your changes could be saved.",
             });
         }
 
-        res.json({message: "Attribute updated successfully"});
-    } catch(err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError) {
-            if(err.code === "P2002"){
-                res.status(409).json({
-                    error: "Attribute with this name already exists."
-                })
+            if (err.code === "P2002") {
+                return res.status(409).json({
+                    error: "Attribute with this name already exists.",
+                });
             }
         }
 
-        res.status(500).json({error: "Internal server error"});
+        console.error(err);
+
+        res.status(500).json({
+            error: "Internal server error",
+        });
     }
-}
+};

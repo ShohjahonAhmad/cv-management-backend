@@ -35,13 +35,20 @@ export const UpdateUserBlockSchema = z.object({
 
 export type UpdateUserBlockDto = z.infer<typeof UpdateUserBlockSchema>
 
+export const AttributeOptionSchema = z.object({
+    id: z.number().int().nonnegative("ID must be a non-negative integer").optional(),
+    value: z.string().trim().min(1, "Option must be at least 1 character long").max(100, "Option must be at most 100 characters long"),
+})
+
+export type AttributeOption = z.infer<typeof AttributeOptionSchema>
+
 export const AttributeSchema = z.object({
     id: z.number().int().nonnegative(),
     name: z.string().trim().min(3, "Name must be at least 3 characters long").max(50, "Name must be at most 50 characters long"),
     description: z.string().trim().max(500),
     category: z.enum(AttributeCategory),
     type: z.enum(AttributeType),
-    options: z.array(z.string().trim().min(1, "Option cannot be empty").max(100, "Option must be at most 100 characters long")).optional(),
+    attributeOptions: z.array(AttributeOptionSchema).optional(),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
 })
@@ -51,17 +58,17 @@ export const CreateAttributeSchema = AttributeSchema.pick({
     description: true,
     category: true,
     type: true,
-    options: true,
+    attributeOptions: true,
 }).strict().superRefine((data, ctx) => {
     if(data.type === AttributeType.SELECT) {
-        if(!data.options || data.options.length === 0) {
+        if(!data.attributeOptions || data.attributeOptions.length === 0) {
             ctx.addIssue({
                 code: "custom",
                 path: ["options"],
                 message: "Select attributes require at least one option."
             })
         }
-    } else if(data.options) {
+    } else if(data.attributeOptions && data.attributeOptions.length > 0) {
         ctx.addIssue({
             code: "custom",
             path: ["options"],
@@ -81,6 +88,24 @@ export const UpdateAttributeSchema = AttributeSchema.pick({
     description: true,
     category: true,
     updatedAt: true,
-}).strict();
+    attributeOptions: true,
+    type: true
+}).strict().superRefine((data, ctx) => {
+    if(data.type === AttributeType.SELECT) {
+        if(!data.attributeOptions || data.attributeOptions.length === 0) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["options"],
+                message: "Select attributes require at least one option."
+            })
+        }
+    } else if(data.attributeOptions && data.attributeOptions.length > 0) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["options"],
+            message: "Only Select attribute may have options."
+        })
+    }
+});;
 
 export type UpdateAttributeDto = z.infer<typeof UpdateAttributeSchema>;
