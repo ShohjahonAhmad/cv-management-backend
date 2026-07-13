@@ -135,7 +135,8 @@ model Position {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  positionAttributes PositionAttribute[]
+  positionAttributes  PositionAttribute[]
+  positionProjectTags PositionProjectTag[]
 }
 
 model PositionAttribute {
@@ -162,6 +163,26 @@ enum PositionLevel {
   DIRECTOR
   VP
   C_LEVEL
+}
+
+model ProjectTag {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  positionProjectTags PositionProjectTag[]
+}
+
+model PositionProjectTag {
+  id Int @id @default(autoincrement())
+
+  positionId Int
+  position   Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  projectTagId Int
+  projectTag   ProjectTag @relation(fields: [projectTagId], references: [id], onDelete: Cascade)
+
+  @@unique([positionId, projectTagId])
 }
 
 // model Position {

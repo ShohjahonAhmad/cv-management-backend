@@ -121,6 +121,7 @@ export const PositionSchema = z.object({
     level: z.enum(PositionLevel),
     maxProjects: z.coerce.number().int().min(1, "Maximum projects must be at least 1").default(3),
     attributeIds: z.array(z.number().int().positive()).default([]).refine(ids => new Set(ids).size === ids.length, "Duplicate attributes are not allowed"),
+    tags: z.array(z.string().trim().min(1, "Tag must be at least 1 character long").max(50, "Tag must be at most 50 characters long")).default([]).refine(tags => new Set(tags.map(tag => tag.toLowerCase())).size === tags.length, "Duplicate project tags are not allowed"),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
 });
@@ -132,6 +133,7 @@ export const CreatePositionSchema = PositionSchema.pick({
     level: true,
     maxProjects: true,
     attributeIds: true,
+    tags: true
 }).strict();
 
 export type CreatePositionDto = z.infer<typeof CreatePositionSchema>;
@@ -143,6 +145,7 @@ export const UpdatePositionSchema = PositionSchema.pick({
     level: true,
     maxProjects: true,
     attributeIds: true,
+    tags: true,
     updatedAt: true
 }).strict();
 

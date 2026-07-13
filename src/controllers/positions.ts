@@ -30,7 +30,8 @@ export const getPositions: RequestHandler = async (req, res) => {
                 orderBy: {
                     order: 'asc'
                 }
-            }
+            },
+            positionProjectTags: true
         }
     });
 
@@ -42,7 +43,7 @@ export const getPositions: RequestHandler = async (req, res) => {
 }
 
 export const createPosition: RequestHandler = async (req, res) => {
-    const {title, description, company, level, maxProjects, attributeIds} = req.body as CreatePositionDto;
+    const {title, description, company, level, maxProjects, attributeIds, tags} = req.body as CreatePositionDto;
 
     const position = await prisma.position.create({
         data: {
@@ -56,15 +57,26 @@ export const createPosition: RequestHandler = async (req, res) => {
                     attributeId,
                     order: index,
                 }))
+            },
+            positionProjectTags: {
+                create: tags.map((tag: string) => ({
+                    projectTag: {
+                        connectOrCreate: {
+                            where: {name: tag},
+                            create: {name: tag}
+                        }
+                    }
+                }))
+
             }
         }
     })
 
-    res.status(201).json(position);
+    res.status(201).json({position, message: "Position created successfully"});
 }
 
 export const updatePosition: RequestHandler = async (req, res) => {
-    const {attributeIds, updatedAt, ...data} = req.body as UpdatePositionDto;
+    const {tags, attributeIds, updatedAt, ...data} = req.body as UpdatePositionDto;
     const id = Number(req.params.id);
 
     const count = await prisma.$transaction(async (tx) => {
@@ -79,6 +91,7 @@ export const updatePosition: RequestHandler = async (req, res) => {
             where: {positionId: id},
         })
 
+
         await tx.positionAttribute.createMany({
             data: attributeIds.map((attributeId: number, index: number) => ({
                 positionId: id,
@@ -86,6 +99,31 @@ export const updatePosition: RequestHandler = async (req, res) => {
                 order: index,
             }))
         })
+
+        await tx.positionProjectTag.deleteMany({
+            where: {positionId: id},
+        })
+
+        if(tags.length === 0) return change.count;
+
+        await tx.projectTag.createMany({
+            data: tags.map((tag: string) => ({name: tag})),
+            skipDuplicates: true
+        });
+
+        const projectTags = await tx.projectTag.findMany({
+            where: {
+                name: {in: tags}
+            },
+            select: {id: true}
+        });
+
+        await tx.positionProjectTag.createMany({
+            data: projectTags.map(tag => ({
+                positionId: id,
+                projectTagId: tag.id
+            }))
+        });
 
         return change.count;
     });
@@ -128,7 +166,8 @@ export const duplicatePosition: RequestHandler = async (req, res) => {
     const position = await prisma.position.findUnique({
         where: {id},
         include: {
-            positionAttributes: true
+            positionAttributes: true,
+            positionProjectTags: true,
         }
     });
 
@@ -148,6 +187,13 @@ export const duplicatePosition: RequestHandler = async (req, res) => {
                 create: position.positionAttributes.map((positionAttribute) => ({
                     attributeId: positionAttribute.attributeId,
                     order: positionAttribute.order,
+                })),
+            },
+            positionProjectTags: {
+                create: position.positionProjectTags.map((positionProjectTag) => ({
+                    projectTag: {
+                        connect: {id: positionProjectTag.projectTagId},
+                    },
                 })),
             }
         }
