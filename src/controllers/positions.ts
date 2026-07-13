@@ -2,7 +2,6 @@ import type { RequestHandler } from "express";
 import prisma from "../prisma.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import type { CreatePositionDto, DeletePositionsDto, UpdatePositionDto } from "../middleware/schema.js";
-import type { PositionAttribute } from "../../generated/prisma/browser.js";
 
 export const getPositions: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -27,11 +26,18 @@ export const getPositions: RequestHandler = async (req, res) => {
         },
         include: {
             positionAttributes: {
+                select: {
+                    attribute: true
+                },
                 orderBy: {
                     order: 'asc'
                 }
             },
-            positionProjectTags: true
+            positionProjectTags: {
+                select: {
+                    projectTag: true
+                }
+            }
         }
     });
 

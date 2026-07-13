@@ -8,6 +8,6 @@ router.get("/", positionController.getPositions);
 router.post("/", validation.CreatePosition, positionController.createPosition);
 router.delete("/", validation.DeletePositions, positionController.deletePosition);
 router.put("/:id", validation.UpdatePosition, positionController.updatePosition);
-router.post(":id/duplicate", positionController.duplicatePosition);
+router.post("/:id/duplicate", positionController.duplicatePosition);
 
 export default router;
