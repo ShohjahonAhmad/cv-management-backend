@@ -2,6 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import authRoute from "./routes/auth.js";
 import userRoute from "./routes/user.js";
+import positionRoute from "./routes/positions.js"
 import attributeRoute from "./routes/attributes.js"
 import "./config/passport.js";
 import "dotenv/config"
@@ -18,6 +19,7 @@ app.use("/auth", authRoute);
 app.use(authenticated)
 app.use("/users", userRoute);
 app.use("/attributes", attributeRoute);
+app.use("/positions", positionRoute);
 const PORT = process.env.PORT || 9090;
 
 app.listen(PORT, () => {

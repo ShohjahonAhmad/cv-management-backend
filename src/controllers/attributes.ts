@@ -1,7 +1,7 @@
 import type {RequestHandler} from "express";
 import prisma from "../prisma.js";
 import { AttributeCategory, AttributeType, Prisma } from "../../generated/prisma/client.js";
-import type { DeleteAttributesDto} from "../middleware/schema.js";
+import type { AttributeOption, DeleteAttributesDto} from "../middleware/schema.js";
 
 export const getAttributes: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -55,16 +55,16 @@ export const createAttribute: RequestHandler = async (req, res) => {
             type,
         }
 
-        if(type === AttributeType.SELECT) {
+        if(type === AttributeType.SELECT && attributeOptions) {
             data.attributeOptions = {
-                create: attributeOptions.map((value:string, index: number) => ({
-                    value,
-                    order: index,
-                })),
-            };
+                create: attributeOptions.map((option: AttributeOption, index: number) => ({
+                    value: option.value,
+                    order: index
+                })
+            )};
         }
 
-        const attribute = await prisma.attribute.create({data, include: {attributeOptions: true}});
+        const attribute = await prisma.attribute.create({data, include: {attributeOptions: {orderBy: {order: 'asc'}}}});
 
         res.status(201).json({attribute, message: "Attribute created successfully"});
     } catch (err) {

@@ -79,7 +79,8 @@ model Attribute {
 
   attributeOptions AttributeOption[]
 
-  attributeValues AttributeValue[]
+  attributeValues    AttributeValue[]
+  positionAttributes PositionAttribute[]
 }
 
 model AttributeOption {
@@ -118,17 +119,50 @@ model AttributeValue {
   @@unique([candidateId, attributeId])
 }
 
-// enum PositionLevel {
-//   INTERN
-//   JUNIOR
-//   MIDDLE
-//   SENIOR
-//   LEAD
-//   MANAGER
-//   DIRECTOR
-//   VP
-//   C_LEVEL
-// }
+model Position {
+  id Int @id @default(autoincrement())
+
+  title       String
+  description String?
+
+  company String
+  level   PositionLevel
+
+  maxProjects Int @default(3)
+
+  isPublic Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  positionAttributes PositionAttribute[]
+}
+
+model PositionAttribute {
+  id Int @id @default(autoincrement())
+
+  positionId Int
+  position   Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  attributeId Int
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  order Int
+
+  @@unique([positionId, attributeId])
+}
+
+enum PositionLevel {
+  INTERN
+  JUNIOR
+  MIDDLE
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+  VP
+  C_LEVEL
+}
 
 // model Position {
 //   id Int @id @default(autoincrement())
