@@ -5,7 +5,7 @@ import type { CreatePositionDto, DeletePositionsDto, UpdatePositionDto } from ".
 
 export const getPositions: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
-    const pageSize = Math.max(1, Number(req.query.take) || 10);
+    const pageSize = Math.max(1, Number(req.query.take) || 1);
     const search = req.query.search?.toString();
 
     const where: Prisma.PositionWhereInput = {};

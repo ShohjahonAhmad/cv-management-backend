@@ -120,7 +120,7 @@ export const PositionSchema = z.object({
     company: z.string().trim().min(1, "Company is required").max(100, "Company must be at most 100 characters long"),
     level: z.enum(PositionLevel),
     maxProjects: z.coerce.number().int().min(1, "Maximum projects must be at least 1").default(3),
-    attributeIds: z.array(z.number().int().positive()).default([]).refine(ids => new Set(ids).size === ids.length, "Duplicate attributes are not allowed"),
+    attributeIds: z.array(z.coerce.number().int().positive()).default([]).refine(ids => new Set(ids).size === ids.length, "Duplicate attributes are not allowed"),
     tags: z.array(z.string().trim().min(1, "Tag must be at least 1 character long").max(50, "Tag must be at most 50 characters long")).default([]).refine(tags => new Set(tags.map(tag => tag.toLowerCase())).size === tags.length, "Duplicate project tags are not allowed"),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
