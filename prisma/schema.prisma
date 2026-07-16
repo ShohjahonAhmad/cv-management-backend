@@ -30,6 +30,10 @@ model User {
   firstName String
   lastName  String
 
+  headline String?
+  aboutMe  String? @db.Text
+
+  phone    String?
   location String?
   photoUrl String?
 

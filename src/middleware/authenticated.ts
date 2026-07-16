@@ -21,7 +21,7 @@ const authenticated: RequestHandler = async (req, res, next) => {
         const user = await prisma.user.findUnique({
             where: {
                 id: decoded.id
-            }
+            },
         })
 
         if(!user) {

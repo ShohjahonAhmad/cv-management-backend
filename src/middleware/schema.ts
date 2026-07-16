@@ -156,3 +156,86 @@ export const DeletePositionsSchema = z.object({
 })
 
 export type DeletePositionsDto = z.infer<typeof DeletePositionsSchema>;
+
+const StringAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("STRING"),
+    value: z.string().trim().min(1, "Value must be at least 1 character long").max(50, "Value must be at most 50 characters long"),
+});
+
+const NumberAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("NUMBER"),
+    value: z.coerce.number(),
+});
+
+const BooleanAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("BOOLEAN"),
+    value: z.boolean(),
+});
+
+const TextAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("TEXT"),
+    value: z.string().trim().min(1, "Value must be at least 1 character long").max(500, "Value must be at most 500 characters long"),
+});
+
+const ImageAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("IMAGE"),
+    value: z.url("Image must be a valid URL"),
+});
+
+const DateAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("DATE"),
+    value: z.coerce.date(),
+});
+
+const PeriodAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("PERIOD"),
+    value: z.object({
+        startDate: z.coerce.date(),
+        endDate: z.coerce.date(),
+    }).refine(({startDate, endDate}) => startDate <= endDate,
+        {
+            message: "End date must be after start date",
+            path: ["endDate"],
+        }
+     ),
+});
+
+const SelectAttribute = z.object({
+    attributeId: z.number().int().positive(),
+    type: z.literal("SELECT"),
+    value: z.coerce.number().int().positive(),
+})
+
+const AttributeValueSchema = z.discriminatedUnion("type", [
+    StringAttribute,
+    NumberAttribute,
+    TextAttribute,
+    BooleanAttribute,
+    ImageAttribute,
+    DateAttribute,
+    PeriodAttribute,
+    SelectAttribute
+])
+
+export const ProfileSchema = z.object({
+    firstName: z.string().trim().min(1, "First name is required"),
+    lastName: z.string().trim().min(1, "Last name is required"),
+    phone: z.string().trim().max(30, "Phone number must be at most 30 characters").nullable().default(null),
+    location: z.string().nullable().default(null),
+    photoUrl: z.string().nullable().default(null),
+    headline: z.string().trim().max(100, "Headline must be at most 100 characters").nullable().default(null),
+    aboutMe: z.string().trim().max(2000, "About Me must be at most 2000 characters").nullable().default(null),
+
+    attributeValues: z.array(AttributeValueSchema).refine(values => new Set(values.map(v => v.attributeId)).size === values.length, {
+        "message": "Duplicate attribute values are not allowed",
+    })
+})
+
+export type ProfileDto = z.infer<typeof ProfileSchema>;
