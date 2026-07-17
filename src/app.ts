@@ -10,6 +10,7 @@ import "./config/passport.js";
 import "dotenv/config"
 import authenticated from './middleware/authenticated.js';
 import cors from "cors";
+import errorHandler from './middleware/error.js';
 
 const app = express();
 
@@ -24,6 +25,8 @@ app.use("/users", userRoute);
 app.use("/candidate", candidateRoute);
 app.use("/positions", positionRoute);
 app.use("/attributes", attributeRoute);
+
+app.use(errorHandler);
 const PORT = process.env.PORT || 9090;
 
 app.listen(PORT, () => {

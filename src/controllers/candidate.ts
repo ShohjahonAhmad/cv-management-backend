@@ -86,15 +86,21 @@ export const updateProfile: RequestHandler = async (req, res) => {
                             optionId: attribute.value,
                         }
                     case "DATE":
+                        const date = new Date(attribute.value);
+                        date.setHours(12, 0, 0, 0);
                         return {
                             ...attributeValue,
-                            dateValue: attribute.value,
+                            dateValue: date,
                         }
                     case "PERIOD":
+                        const periodStart = new Date(attribute.value.startDate);
+                        const periodEnd = new Date(attribute.value.endDate);
+                        periodStart.setHours(12, 0, 0, 0);
+                        periodEnd.setHours(12, 0, 0, 0);
                         return {
                             ...attributeValue,
-                            periodStart: attribute.value.startDate,
-                            periodEnd: attribute.value.endDate,
+                            periodStart,
+                            periodEnd,
                         }
                     case "TEXT":
                         return {
@@ -155,4 +161,51 @@ export const uploadAvatar: RequestHandler = async (req, res) => {
         success: true,
         photoUrl: data.publicUrl,
     });
+}
+
+export const uploadImageAttribute: RequestHandler = async (req, res) => {
+    const file = req.file;
+    const attributeValueId = Number(req.params.attributeValueId);
+
+    if(!file) {
+        res.status(400).json({error: "No file uploaded"});
+        return;
+    };
+
+    if(!extensionMap.has(file.mimetype)) {
+        res.status(400).json({error: "Unsupported image format"});
+        return;
+    };
+
+    const name = crypto.randomUUID();
+    const extension = extensionMap.get(file.mimetype);
+
+    const path = `${req.user.id}-${name}${extension}`;
+
+    const {error} = await supabase.storage.from("images").upload(path, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+    })
+
+    if(error) {
+        res.status(500).json({error: error.message});
+        return;
+    }
+
+    const {data} = supabase.storage.from("images").getPublicUrl(path);
+
+    await prisma.attributeValue.updateMany({
+        where: {
+            id: attributeValueId,
+            candidateId: req.user.id
+        }, 
+        data: {
+            imageUrl: data.publicUrl
+        }
+    })
+
+    res.json({
+        success: true,
+        imageUrl: data.publicUrl,
+    })
 }
