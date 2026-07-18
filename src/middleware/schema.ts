@@ -24,6 +24,12 @@ export const SelectedSchema = z.object({
     updatedAt: z.coerce.date(),
 });
 
+export const SelectedAttributeSchema = z.object({
+    attributeIds: z.array(z.coerce.number().int().positive()).min(1),
+})
+
+export type SelectedAttributeDto = z.infer<typeof SelectedAttributeSchema>;
+
 export const UpdateUserRoleSchema = z.object({
     role: z.enum(Role),
     users: z.array(SelectedSchema).min(1),

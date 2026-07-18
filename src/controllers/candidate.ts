@@ -1,9 +1,10 @@
 import type { RequestHandler } from "express";
 import prisma from "../prisma.js";
-import type { ProfileDto } from "../middleware/schema.js";
+import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
 import { id } from "zod/locales";
+import type { Prisma } from "../../generated/prisma/client.js";
 
 export const getProfile: RequestHandler = async (req, res) => {
     const profile = await prisma.user.findUnique({
@@ -208,4 +209,89 @@ export const uploadImageAttribute: RequestHandler = async (req, res) => {
         success: true,
         imageUrl: data.publicUrl,
     })
+}
+
+export const addAttributes: RequestHandler = async (req, res) => {
+    const {attributeIds} = req.body as SelectedAttributeDto;
+
+    const existingAttributes = await prisma.attribute.findMany({
+        where: {
+            id: {
+                in: attributeIds
+            }
+        },
+        select: {
+            id: true
+        }
+    });
+
+    if(existingAttributes.length !== attributeIds.length) {
+        res.status(400).json({success: false, error: "Some attributes do not exist"});
+        return;
+    }
+    const existingAttributeIds = existingAttributes.map((attribute) => attribute.id);
+
+    const alreadyAddedAttributes = await prisma.attributeValue.findMany({
+        where: {
+            candidateId: req.user.id,
+            attributeId: {
+                in: existingAttributeIds
+            }
+        },
+        select: {
+            attributeId: true
+        }
+    });
+
+    const alreadyAddedAttributeIds = new Set(alreadyAddedAttributes.map((attribute) => attribute.attributeId));
+
+    const newAttributeIds = existingAttributeIds.filter((id) => !alreadyAddedAttributeIds.has(id));
+
+    if (newAttributeIds.length === 0) {
+        return res.json({
+            success: true,
+            count: 0,
+        });
+    }
+
+    const {count} = await prisma.attributeValue.createMany({
+        data: newAttributeIds.map((attributeId) => ({
+            candidateId: req.user.id,
+            attributeId,
+        }))
+    });
+
+    res.json({
+        success: true,
+        count,
+    });
+}
+
+export const searchAttributes: RequestHandler = async (req, res) => {
+    const search = (req.query.search as string ?? "").trim();
+
+    const where: Prisma.AttributeWhereInput = {
+        attributeValues: {
+            none: {
+                candidateId: req.user.id
+            }
+        }
+    };
+
+    if(search){
+        where.name = {
+            contains: search,
+            mode: "insensitive"
+        }
+    }
+
+    const attributes = await prisma.attribute.findMany({
+        where,
+        take: 10,
+        orderBy: {
+            name: "asc"
+        }
+    });
+
+    res.json({attributes});
 }

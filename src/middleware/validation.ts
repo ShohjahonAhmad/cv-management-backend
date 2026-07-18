@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import type z from "zod";
-import { CreateAttributeSchema, CreatePositionSchema, DeleteAttributeSchema, DeletePositionsSchema, ProfileSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
+import { CreateAttributeSchema, CreatePositionSchema, DeleteAttributeSchema, DeletePositionsSchema, ProfileSchema, SelectedAttributeSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
 
 export const validateReqUser: RequestHandler = (req, res, next) => {
     if(!req.user){
@@ -35,3 +35,4 @@ export const CreatePosition = validateBody(CreatePositionSchema);
 export const UpdatePosition = validateBody(UpdatePositionSchema);
 export const DeletePositions = validateBody(DeletePositionsSchema);
 export const UpdateProfile = validateBody(ProfileSchema);
+export const AddAttribute = validateBody(SelectedAttributeSchema);
