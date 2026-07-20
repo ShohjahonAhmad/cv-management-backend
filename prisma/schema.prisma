@@ -191,31 +191,3 @@ model PositionProjectTag {
 
   @@unique([positionId, projectTagId])
 }
-
-// model Position {
-//   id Int @id @default(autoincrement())
-
-//   title String
-//   description String?
-
-//   isPublic Boolean @default(true)
-
-//   company String?
-//   level PositionLevel
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   attributes PositionAttribute[]
-//   projectTags PositionProjectTag[]
-
-// }
-
-// model
-
-// model ProjectTag {
-//   id Int @id @default(autoincrement())
-
-//   name String @unique
-//   positions  
-// }

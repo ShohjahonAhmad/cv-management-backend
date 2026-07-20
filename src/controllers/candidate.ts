@@ -3,8 +3,7 @@ import prisma from "../prisma.js";
 import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
-import { id } from "zod/locales";
-import type { Prisma } from "../../generated/prisma/client.js";
+import { PositionLevel, type Prisma } from "../../generated/prisma/client.js";
 
 export const getProfile: RequestHandler = async (req, res) => {
     const profile = await prisma.user.findUnique({
@@ -87,6 +86,12 @@ export const updateProfile: RequestHandler = async (req, res) => {
                             optionId: attribute.value,
                         }
                     case "DATE":
+                        if(attribute.value == null) {
+                            return {
+                                ...attributeValue,
+                                dateValue: null,
+                            }
+                        }
                         const date = new Date(attribute.value);
                         date.setHours(12, 0, 0, 0);
                         return {
@@ -94,6 +99,13 @@ export const updateProfile: RequestHandler = async (req, res) => {
                             dateValue: date,
                         }
                     case "PERIOD":
+                        if(attribute.value == null || attribute.value.startDate == null || attribute.value.endDate == null) {
+                            return {
+                                ...attributeValue,
+                                periodStart: null,
+                                periodEnd: null,
+                            }
+                        }
                         const periodStart = new Date(attribute.value.startDate);
                         const periodEnd = new Date(attribute.value.endDate);
                         periodStart.setHours(12, 0, 0, 0);
@@ -294,4 +306,72 @@ export const searchAttributes: RequestHandler = async (req, res) => {
     });
 
     res.json({attributes});
+}
+
+function validateLevel(rawLevel?: string) : PositionLevel | undefined {
+    return Object.values(PositionLevel).includes(rawLevel as PositionLevel) ? rawLevel as PositionLevel : undefined;
+}
+
+export const getPositions: RequestHandler = async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.max(1, Number(req.query.take) || 50);
+    const sort = req.query.sort?.toString()?.trim() == "asc" ? "asc" : "desc";
+    const search = req.query.search?.toString().trim();
+    const level = validateLevel(req.query.level?.toString()?.trim());
+
+    const where : Prisma.PositionWhereInput = {
+    }
+
+    if(search){
+        where.OR = [
+            {
+                title: {
+                    contains: search,
+                    mode: "insensitive"
+                }
+            },
+    
+            {
+                description: {
+                    contains: search,
+                    mode: "insensitive"
+                }
+            }
+        ]
+    }
+
+    if(level) {
+        where.level = level;
+    }
+
+    const positions = await prisma.position.findMany({
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        where,
+        orderBy: {
+            createdAt: sort
+        },
+        include: {
+            positionProjectTags: {
+                select: {
+                    projectTag: {
+                        select: {
+                            name: true
+                        }
+                    }
+                }
+            },
+            _count: {
+                select: {
+                    positionAttributes: true,
+                }
+            }
+        }
+    });
+
+    const total = await prisma.position.count({where});
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    res.json({positions, page, pageSize, total, totalPages, name: req.user.firstName});
 }
