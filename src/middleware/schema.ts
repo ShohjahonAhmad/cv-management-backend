@@ -1,8 +1,5 @@
 import z from "zod";
 import { AttributeCategory, AttributeType, PositionLevel, Provider, Role } from "../../generated/prisma/enums.js";
-import { title } from "node:process";
-import { de } from "zod/locales";
-import { create } from "node:domain";
 
 export const UserSchema = z.object({
     id: z.number().int().nonnegative(),
@@ -166,57 +163,57 @@ export type DeletePositionsDto = z.infer<typeof DeletePositionsSchema>;
 const StringAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("STRING"),
-    value: z.string().trim().min(1, "Value must be at least 1 character long").max(50, "Value must be at most 50 characters long"),
+    value: z.string().trim().min(1, "Value must be at least 1 character long").max(50, "Value must be at most 50 characters long").nullable().default(null),
 });
 
 const NumberAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("NUMBER"),
-    value: z.coerce.number(),
+    value: z.coerce.number().nullable().default(null),
 });
 
 const BooleanAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("BOOLEAN"),
-    value: z.boolean(),
+    value: z.boolean().nullable().default(null),
 });
 
 const TextAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("TEXT"),
-    value: z.string().trim().min(1, "Value must be at least 1 character long").max(500, "Value must be at most 500 characters long"),
+    value: z.string().trim().min(1, "Value must be at least 1 character long").max(500, "Value must be at most 500 characters long").nullable().default(null),
 });
 
 const ImageAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("IMAGE"),
-    value: z.url("Image must be a valid URL"),
+    value: z.url("Image must be a valid URL").nullable().default(null),
 });
 
 const DateAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("DATE"),
-    value: z.coerce.date(),
+    value: z.coerce.date().nullable().default(null),
 });
 
 const PeriodAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("PERIOD"),
     value: z.object({
-        startDate: z.coerce.date(),
-        endDate: z.coerce.date(),
-    }).refine(({startDate, endDate}) => startDate <= endDate,
+        startDate: z.coerce.date().nullable().default(null),
+        endDate: z.coerce.date().nullable().default(null),
+    }).refine(({startDate, endDate}) => !startDate || !endDate || startDate <= endDate,
         {
             message: "End date must be after start date",
             path: ["endDate"],
         }
-     ),
+     ).nullable().default(null),
 });
 
 const SelectAttribute = z.object({
     attributeId: z.number().int().positive(),
     type: z.literal("SELECT"),
-    value: z.coerce.number().int().positive(),
+    value: z.coerce.number().int().positive().nullable().default(null),
 })
 
 const AttributeValueSchema = z.discriminatedUnion("type", [
@@ -245,3 +242,13 @@ export const ProfileSchema = z.object({
 })
 
 export type ProfileDto = z.infer<typeof ProfileSchema>;
+
+export const CVSchema = z.object({
+    attributeValues: z.array(AttributeValueSchema).refine(values => new Set(values.map(v => v.attributeId)).size === values.length, {
+        "message": "Duplicate attribute values are not allowed",
+    })
+})
+
+export type AttributeValueDto = z.infer<typeof AttributeValueSchema>;
+
+export type CVDto = z.infer<typeof CVSchema>;

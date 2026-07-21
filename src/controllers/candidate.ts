@@ -3,7 +3,7 @@ import prisma from "../prisma.js";
 import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
-import { PositionLevel, type Prisma } from "../../generated/prisma/client.js";
+import { AttributeType, PositionLevel, type AttributeValue, type Prisma } from "../../generated/prisma/client.js";
 
 export const getProfile: RequestHandler = async (req, res) => {
     const profile = await prisma.user.findUnique({
@@ -374,4 +374,91 @@ export const getPositions: RequestHandler = async (req, res) => {
     const totalPages = Math.ceil(total / pageSize);
 
     res.json({positions, page, pageSize, total, totalPages, name: req.user.firstName});
+}
+
+export const getPositionById: RequestHandler = async (req, res) => {
+    const positionId = Number(req.params.id);
+
+    const position = await prisma.position.findUnique({
+        where: {
+            id: positionId,
+        },
+        include: {
+            positionProjectTags: {
+                select: {
+                    projectTag:{
+                        select: {
+                            name: true
+                        }
+                    }
+                }
+            },
+            positionAttributes: {
+                select: {
+                    attribute: {
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            type: true,
+                            attributeOptions: true,
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if(!position) {
+        res.status(404).json({error: "Position not found"});
+        return;
+    }
+
+    const userAttributeValues = await prisma.attributeValue.findMany({
+        where: {
+            candidateId: req.user.id,
+            attributeId: {
+                in: position.positionAttributes.map((pa) => pa.attribute.id) ?? []
+            }
+        },
+        include: {
+            attribute: true
+        }
+    })
+
+    const completedRequiredAttributes = userAttributeValues.filter((av) => isCompleted(av.attribute.type, av)).length;
+    const totalRequiredAttributes = position.positionAttributes.length;
+    const missingAttributes = position.positionAttributes.filter((pa) => {
+        const value = userAttributeValues.find((av) => av.attributeId === pa.attribute.id);
+
+        return !value || !isCompleted(value.attribute.type, value);
+    }).map((pa => pa.attribute));
+
+    res.json({
+        position,
+        completedRequiredAttributes,
+        totalRequiredAttributes,
+        missingAttributes
+    });
+}
+
+function isCompleted (type : AttributeType, attributeValue: AttributeValue) {
+    switch(type) {
+        case AttributeType.STRING:
+            return attributeValue.stringValue != null
+        case AttributeType.NUMBER:
+            return attributeValue.numericValue != null
+        case AttributeType.BOOLEAN:
+            return attributeValue.booleanValue != null
+        case AttributeType.SELECT:
+            return attributeValue.optionId != null
+        case AttributeType.DATE:    
+            return attributeValue.dateValue != null
+        case AttributeType.PERIOD:
+            return attributeValue.periodStart != null && attributeValue.periodEnd != null
+        case AttributeType.TEXT:
+            return attributeValue.textValue != null;
+        case AttributeType.IMAGE:
+            return attributeValue.imageUrl != null;
+    }
 }

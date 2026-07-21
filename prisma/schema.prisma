@@ -47,6 +47,7 @@ model User {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   attributeValues AttributeValue[]
+  cvs             CV[]
 
   @@unique([provider, providerUserId])
   @@index([role])
@@ -144,6 +145,8 @@ model Position {
 
   positionAttributes  PositionAttribute[]
   positionProjectTags PositionProjectTag[]
+
+  cvs CV[]
 }
 
 model PositionAttribute {
@@ -190,4 +193,27 @@ model PositionProjectTag {
   projectTag   ProjectTag @relation(fields: [projectTagId], references: [id], onDelete: Cascade)
 
   @@unique([positionId, projectTagId])
+}
+
+enum CVStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model CV {
+  id Int @id @default(autoincrement())
+
+  candidateId Int
+  candidate   User @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  positionId Int
+  position   Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  status CVStatus @default(DRAFT)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@unique([candidateId, positionId])
 }

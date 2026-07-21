@@ -12,5 +12,6 @@ router.post("/profile/image/:attributeValueId", upload.single("image"), candidat
 router.post("/profile/attributes", validation.AddAttribute, candidateController.addAttributes);
 router.get("/profile/attributes", candidateController.searchAttributes);
 router.get("/positions", candidateController.getPositions);
+router.get("/positions/:id", candidateController.getPositionById);
 
 export default router;

@@ -1,5 +1,6 @@
 import express from 'express';
 import passport from 'passport';
+import cvRoute from "./routes/cv.js";
 import tagRoute from "./routes/tags.js";
 import authRoute from "./routes/auth.js";
 import userRoute from "./routes/user.js";
@@ -19,7 +20,8 @@ app.use(express.json());
 app.use(cors())
 
 app.use("/auth", authRoute);
-app.use(authenticated)
+app.use(authenticated);
+app.use("/cv", cvRoute);
 app.use("/tags", tagRoute);
 app.use("/users", userRoute);
 app.use("/candidate", candidateRoute);
