@@ -4,6 +4,7 @@ import * as validation from "../middleware/validation.js";
 
 const router = Router();
 
+router.get("/", cvController.getCVs);
 router.post("/:positionId", validation.validatePositionId, cvController.createCV);
 router.get("/:id", validation.validateId, cvController.getCVById);
 router.patch("/:id", validation.validateId, validation.UpdateCV, cvController.updateCV);

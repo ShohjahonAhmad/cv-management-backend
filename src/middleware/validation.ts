@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import z from "zod";
-import { CreateAttributeSchema, CreatePositionSchema, CVSchema, DeleteAttributeSchema, DeletePositionsSchema, ProfileSchema, SelectedAttributeSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
+import { CreateAttributeSchema, CreatePositionSchema, CVSchema, DeleteAttributeSchema, DeletePositionsSchema, DeleteUserSchema, ProfileSchema, SelectedAttributeSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
 
 export const validateReqUser: RequestHandler = (req, res, next) => {
     if(!req.user){
@@ -50,6 +50,7 @@ const validateBody = (schema: z.ZodType<any>): RequestHandler => (req, res, next
 
 export const UpdateUsersRole = validateBody(UpdateUserRoleSchema);
 export const UpdateUsersBlock = validateBody(UpdateUserBlockSchema);
+export const DeleteUsers = validateBody(DeleteUserSchema);
 export const CreateAttribute = validateBody(CreateAttributeSchema);
 export const DeleteAttribute = validateBody(DeleteAttributeSchema);
 export const UpdateAttribute = validateBody(UpdateAttributeSchema);

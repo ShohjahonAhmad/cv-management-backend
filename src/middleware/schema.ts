@@ -41,6 +41,12 @@ export const UpdateUserBlockSchema = z.object({
 
 export type UpdateUserBlockDto = z.infer<typeof UpdateUserBlockSchema>
 
+export const DeleteUserSchema = z.object({
+    users: z.array(SelectedSchema).min(1),
+}).strict();
+
+export type DeleteUserDto = z.infer<typeof DeleteUserSchema>;
+
 export const AttributeOptionSchema = z.object({
     id: z.number().int().nonnegative("ID must be a non-negative integer").optional(),
     value: z.string().trim().min(1, "Option must be at least 1 character long").max(100, "Option must be at most 100 characters long"),
@@ -235,6 +241,7 @@ export const ProfileSchema = z.object({
     photoUrl: z.string().nullable().default(null),
     headline: z.string().trim().max(100, "Headline must be at most 100 characters").nullable().default(null),
     aboutMe: z.string().trim().max(2000, "About Me must be at most 2000 characters").nullable().default(null),
+    updatedAt: z.coerce.date(),
 
     attributeValues: z.array(AttributeValueSchema).refine(values => new Set(values.map(v => v.attributeId)).size === values.length, {
         "message": "Duplicate attribute values are not allowed",

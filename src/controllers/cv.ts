@@ -1,8 +1,67 @@
 import type { RequestHandler } from "express";
 import prisma from "../prisma.js";
-import { AttributeType, CVStatus, Prisma, type AttributeValue, type Attribute } from "../../generated/prisma/client.js";
+import { CVStatus, Prisma, Role } from "../../generated/prisma/client.js";
 import type { CVDto } from "../middleware/schema.js";
 import getValue from "../utils/getValue.js";
+import initializeCVsWhere from "../utils/initializeCVsWhere.js";
+import hasValue from "../utils/hasValues.js";
+
+export const getCVs: RequestHandler = async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.max(1, Number(req.query.take) || 50);
+    const search = req.query.search?.toString().trim();
+    const tsQuery = search?.split(/\s+/).join(" | ");
+    const where: Prisma.CVWhereInput = initializeCVsWhere(req.user.role, req.user.id);
+
+    if(tsQuery) {
+        where.OR = [
+            {
+                candidate: {
+                    firstName: {search: tsQuery}
+                },
+            },
+            {
+                candidate: {
+                    lastName: {search: tsQuery}
+                }
+            },
+            {
+                position: {
+                    title: {search: tsQuery}
+                }
+            }
+        ]
+    };
+    const [cvs, totalCount] = await prisma.$transaction([
+        prisma.cV.findMany({
+            where,
+            include: {
+                position: {
+                    select: { title: true, company: true, level: true },
+                },
+                candidate: {
+                    select: { firstName: true, lastName: true, photoUrl: true },
+                },
+            },
+            take: pageSize,
+            skip: (page - 1) * pageSize,
+            orderBy: {
+                publishedAt: "desc",
+            },
+        }),
+        prisma.cV.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    res.json({
+        cvs,
+        page,
+        pageSize,
+        totalPages,
+        totalCount,
+    });
+}
 
 export const createCV: RequestHandler = async (req, res, next) => {
     const positionId = Number(req.params.positionId);
@@ -101,20 +160,28 @@ export const getCVById: RequestHandler = async (req, res, next) => {
         return;
     }
 
-    const attributeValues = cv?.candidate.attributeValues.filter((value) => cv.position.positionAttributes.some((attr) => attr.attributeId === value.attributeId));
+    if(req.user.role === Role.CANDIDATE && req.user.id !== cv.candidateId) {
+        res.status(403).json({error: "You are not allowed to view this CV"});
+        return;
+    }
 
+    const attributeValues = cv?.candidate.attributeValues.filter((value) => cv.position.positionAttributes.some((attr) => attr.attributeId === value.attributeId));
     cv.candidate.attributeValues = [];
 
-    res.json({cv, attributeValues});
+    const canEdit = req.user.role === Role.ADMIN || req.user.id === cv.candidateId;
+    res.json({cv, attributeValues, readOnly: !canEdit});
 }
 
 export const updateCV: RequestHandler = async (req, res, next) => {
     try {
+        const where: Prisma.CVWhereInput = {
+            id: Number(req.params.id),
+            ...(req.user.role === Role.ADMIN
+                ? {}
+                : { candidateId: req.user.id }),
+        };
         const cv = await prisma.cV.findFirst({
-            where: {
-                id: Number(req.params.id),
-                candidateId: req.user.id,
-            },
+            where
         });
         
         if (!cv) {
@@ -130,7 +197,7 @@ export const updateCV: RequestHandler = async (req, res, next) => {
             prisma.attributeValue.update({
                 where: {
                     candidateId_attributeId: {
-                        candidateId: req.user.id,
+                        candidateId: cv.candidateId,
                         attributeId: value.attributeId
                     }
                 },
@@ -209,32 +276,10 @@ export const publishCV: RequestHandler = async (req, res, next) => {
             id,
         },
         data: {
-            status: CVStatus.PUBLISHED
+            status: CVStatus.PUBLISHED,
+            publishedAt: new Date()
         }
     })
 
     res.json({message: "CV published successfully"})
-}
-
-function hasValue(value: AttributeValue & {attribute: Attribute}): boolean {
-    switch(value.attribute.type) {
-        case AttributeType.STRING:
-            return value.stringValue !== null && value.stringValue.trim() !== "";
-        case AttributeType.NUMBER:
-            return value.numericValue !== null;
-        case AttributeType.SELECT:
-            return value.optionId !== null;
-        case AttributeType.BOOLEAN:
-            return value.booleanValue !== null;
-        case AttributeType.DATE:
-            return value.dateValue !== null;
-        case AttributeType.PERIOD:
-            return value.periodStart !== null && value.periodEnd !== null;
-        case AttributeType.TEXT:
-            return value.textValue !== null && value.textValue.trim() !== "";
-        case AttributeType.IMAGE:
-            return value.imageUrl !== null && value.imageUrl.trim() !== "";
-        default:
-            throw new Error(`Unsupported attribute type: ${value.attribute.type}`);
-    }
 }

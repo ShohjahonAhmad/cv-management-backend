@@ -3,136 +3,180 @@ import prisma from "../prisma.js";
 import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
-import { AttributeType, PositionLevel, type AttributeValue, type Prisma } from "../../generated/prisma/client.js";
+import { AttributeType, PositionLevel, Role, type AttributeValue, type Prisma } from "../../generated/prisma/client.js";
+
+const profileSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    headline: true,
+    aboutMe: true,
+    email: true,
+    phone: true,
+    location: true,
+    photoUrl: true,
+    updatedAt: true,
+    attributeValues: {
+        orderBy: {
+            attribute: {
+                name: 'asc'
+            }
+        },
+        include: {
+            attribute:{
+                include: {
+                    attributeOptions: true,
+                },
+            },
+            option: true,
+        }
+    }
+} satisfies Prisma.UserSelect;
 
 export const getProfile: RequestHandler = async (req, res) => {
     const profile = await prisma.user.findUnique({
         where: {
             id: req.user.id
         },
-        select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            headline: true,
-            aboutMe: true,
-            email: true,
-            phone: true,
-            location: true,
-            photoUrl: true,
-            attributeValues: {
-                orderBy: {
-                    attribute: {
-                        name: 'asc'
-                    }
-                },
-                include: {
-                    attribute:{
-                        include: {
-                            attributeOptions: true,
-                        },
-                    },
-                    option: true,
-                }
-            }
-        }
+        select: profileSelect
     })
 
-    res.json({profile})
+    res.json({profile, readOnly: false});
 }
 
-export const updateProfile: RequestHandler = async (req, res) => {
-    const {id} = req.user;
-    const { attributeValues, ...data } = req.body as ProfileDto;
+export const updateProfile: RequestHandler = async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        if(req.user.role !== Role.ADMIN && req.user.id !== id) {
+            res.status(403).json({error: "Forbidden"});
+            return;
+        }
+        const { attributeValues, updatedAt, ...data } = req.body as ProfileDto;
 
-    await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-            data,
-            where: {id}
-        });
+        await prisma.$transaction(async (tx) => {
+            const change = await tx.user.updateMany({
+                data,
+                where: {id, updatedAt}
+            });
 
-        await tx.attributeValue.deleteMany({
-            where: {
-                candidateId: id
+            if(change.count === 0) {
+                throw new Error("conflict");
             }
+
+            await tx.attributeValue.deleteMany({
+                where: {
+                    candidateId: id
+                }
+            });
+
+            await tx.attributeValue.createMany({
+                data: attributeValues.map((attribute) => {
+                    const { attributeId } = attribute;
+                    const attributeValue = {
+                        candidateId: id,
+                        attributeId,
+                    }
+                    switch(attribute.type) {
+                        case "STRING":
+                            return {
+                                ...attributeValue,
+                                stringValue: attribute.value,
+                            }
+                        case "NUMBER": 
+                            return {
+                                ...attributeValue,
+                                numericValue: attribute.value,
+                            }
+                        case "BOOLEAN":
+                            return {
+                                ...attributeValue,
+                                booleanValue: attribute.value,
+                            }
+                        case "SELECT":
+                            return {
+                                ...attributeValue,
+                                optionId: attribute.value,
+                            }
+                        case "DATE":
+                            if(attribute.value == null) {
+                                return {
+                                    ...attributeValue,
+                                    dateValue: null,
+                                }
+                            }
+                            const date = new Date(attribute.value);
+                            date.setHours(12, 0, 0, 0);
+                            return {
+                                ...attributeValue,
+                                dateValue: date,
+                            }
+                        case "PERIOD":
+                            if(attribute.value == null || attribute.value.startDate == null || attribute.value.endDate == null) {
+                                return {
+                                    ...attributeValue,
+                                    periodStart: null,
+                                    periodEnd: null,
+                                }
+                            }
+                            const periodStart = new Date(attribute.value.startDate);
+                            const periodEnd = new Date(attribute.value.endDate);
+                            periodStart.setHours(12, 0, 0, 0);
+                            periodEnd.setHours(12, 0, 0, 0);
+                            return {
+                                ...attributeValue,
+                                periodStart,
+                                periodEnd,
+                            }
+                        case "TEXT":
+                            return {
+                                ...attributeValue,
+                                textValue: attribute.value,
+                            }
+                        case "IMAGE": 
+                            return {
+                                ...attributeValue,
+                                imageUrl: attribute.value,
+                            }
+                        default:
+                            throw new Error(`Unsupported attribute type: ${attribute}`);
+                    }
+                })
+            })
         });
 
-        await tx.attributeValue.createMany({
-            data: attributeValues.map((attribute) => {
-                const { attributeId } = attribute;
-                const attributeValue = {
-                    candidateId: id,
-                    attributeId,
-                }
-                switch(attribute.type) {
-                    case "STRING":
-                        return {
-                            ...attributeValue,
-                            stringValue: attribute.value,
-                        }
-                    case "NUMBER": 
-                        return {
-                            ...attributeValue,
-                            numericValue: attribute.value,
-                        }
-                    case "BOOLEAN":
-                        return {
-                            ...attributeValue,
-                            booleanValue: attribute.value,
-                        }
-                    case "SELECT":
-                        return {
-                            ...attributeValue,
-                            optionId: attribute.value,
-                        }
-                    case "DATE":
-                        if(attribute.value == null) {
-                            return {
-                                ...attributeValue,
-                                dateValue: null,
-                            }
-                        }
-                        const date = new Date(attribute.value);
-                        date.setHours(12, 0, 0, 0);
-                        return {
-                            ...attributeValue,
-                            dateValue: date,
-                        }
-                    case "PERIOD":
-                        if(attribute.value == null || attribute.value.startDate == null || attribute.value.endDate == null) {
-                            return {
-                                ...attributeValue,
-                                periodStart: null,
-                                periodEnd: null,
-                            }
-                        }
-                        const periodStart = new Date(attribute.value.startDate);
-                        const periodEnd = new Date(attribute.value.endDate);
-                        periodStart.setHours(12, 0, 0, 0);
-                        periodEnd.setHours(12, 0, 0, 0);
-                        return {
-                            ...attributeValue,
-                            periodStart,
-                            periodEnd,
-                        }
-                    case "TEXT":
-                        return {
-                            ...attributeValue,
-                            textValue: attribute.value,
-                        }
-                    case "IMAGE": 
-                        return {
-                            ...attributeValue,
-                            imageUrl: attribute.value,
-                        }
-                    default:
-                        throw new Error(`Unsupported attribute type: ${attribute}`);
-                }
-            })
-        })
+        res.json({message: "Profile updated successfully"});
+    } catch(err) {
+        if(err instanceof Error && err.message === "conflict") {
+            res.status(409).json({error: "Profile has been updated by another user. Please refresh and try again."});
+            return;
+        }
+
+        next(err);
+    }
+}
+
+export const getProfileById: RequestHandler = async (req, res) => {
+    const userId = Number(req.params.id);
+    if(req.user.role === Role.CANDIDATE && req.user.id !== userId) {
+        res.status(403).json({error: "Forbidden"});
+        return;
+    }
+
+    const profile = await prisma.user.findUnique({
+        where: {
+            id: userId
+        },
+        select: profileSelect
     });
 
-    res.json({message: "Profile updated successfully"});
+    if(!profile) {
+        res.status(404).json({error: "Profile not found"});
+        return;
+    }
+
+    const canEdit = req.user.role === Role.ADMIN || req.user.id === userId;
+
+    res.json({profile, readOnly: !canEdit});
 }
 
 export const uploadAvatar: RequestHandler = async (req, res) => {
