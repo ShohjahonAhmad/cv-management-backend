@@ -4,6 +4,7 @@ import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
 import { AttributeType, PositionLevel, Role, type AttributeValue, type Prisma } from "../../generated/prisma/client.js";
+import { isCompleted } from "../utils/isCompleted.js";
 
 const profileSelect = {
     id: true,
@@ -16,6 +17,7 @@ const profileSelect = {
     location: true,
     photoUrl: true,
     updatedAt: true,
+    cvs: {include: {position: true}},
     attributeValues: {
         orderBy: {
             attribute: {
@@ -29,6 +31,7 @@ const profileSelect = {
                 },
             },
             option: true,
+            
         }
     }
 } satisfies Prisma.UserSelect;
@@ -484,25 +487,4 @@ export const getPositionById: RequestHandler = async (req, res) => {
         totalRequiredAttributes,
         missingAttributes
     });
-}
-
-function isCompleted (type : AttributeType, attributeValue: AttributeValue) {
-    switch(type) {
-        case AttributeType.STRING:
-            return attributeValue.stringValue != null
-        case AttributeType.NUMBER:
-            return attributeValue.numericValue != null
-        case AttributeType.BOOLEAN:
-            return attributeValue.booleanValue != null
-        case AttributeType.SELECT:
-            return attributeValue.optionId != null
-        case AttributeType.DATE:    
-            return attributeValue.dateValue != null
-        case AttributeType.PERIOD:
-            return attributeValue.periodStart != null && attributeValue.periodEnd != null
-        case AttributeType.TEXT:
-            return attributeValue.textValue != null;
-        case AttributeType.IMAGE:
-            return attributeValue.imageUrl != null;
-    }
 }
