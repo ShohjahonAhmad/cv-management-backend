@@ -10,7 +10,7 @@ export const getCVs: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.max(1, Number(req.query.take) || 50);
     const search = req.query.search?.toString().trim();
-    const tsQuery = search?.split(/\s+/).join(" | ");
+    const tsQuery = search?.split(/\s+/).join(" & ");
     const where: Prisma.CVWhereInput = initializeCVsWhere(req.user.role, req.user.id);
 
     if(tsQuery) {
