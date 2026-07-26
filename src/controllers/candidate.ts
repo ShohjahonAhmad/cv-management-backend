@@ -3,7 +3,7 @@ import prisma from "../prisma.js";
 import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
-import { AttributeType, PositionLevel, Role, type AttributeValue, type Prisma } from "../../generated/prisma/client.js";
+import { PositionLevel, Role, type Prisma } from "../../generated/prisma/client.js";
 import { isCompleted } from "../utils/isCompleted.js";
 
 const profileSelect = {

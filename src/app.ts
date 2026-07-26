@@ -4,6 +4,7 @@ import cvRoute from "./routes/cv.js";
 import tagRoute from "./routes/tags.js";
 import authRoute from "./routes/auth.js";
 import userRoute from "./routes/user.js";
+import statsRoute from "./routes/stats.js"
 import positionRoute from "./routes/positions.js"
 import candidateRoute from "./routes/candidate.js"
 import attributeRoute from "./routes/attributes.js"
@@ -12,6 +13,8 @@ import "dotenv/config"
 import authenticated from './middleware/authenticated.js';
 import cors from "cors";
 import errorHandler from './middleware/error.js';
+import authorized from './middleware/authorized.js';
+import { Role } from '../generated/prisma/client.js';
 
 const app = express();
 
@@ -21,12 +24,13 @@ app.use(cors())
 
 app.use("/auth", authRoute);
 app.use(authenticated);
+app.use("/stats", statsRoute);
 app.use("/cv", cvRoute);
 app.use("/tags", tagRoute);
 app.use("/users", userRoute);
 app.use("/candidate", candidateRoute);
 app.use("/positions", positionRoute);
-app.use("/attributes", attributeRoute);
+app.use("/attributes", authorized([Role.ADMIN, Role.RECRUITER]), attributeRoute);
 
 app.use(errorHandler);
 const PORT = process.env.PORT || 9090;

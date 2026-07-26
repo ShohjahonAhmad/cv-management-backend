@@ -25,14 +25,12 @@ const authenticated: RequestHandler = async (req, res, next) => {
         })
 
         if(!user) {
-            console.log("salom")
             res.status(401).json({error: "User doesn't exist"});
             return;
         }
 
         if(user.isBlocked){
-            console.log("salom")
-            res.status(401).json({error: "User is blocked. Please contact customer support"});
+            res.status(403).json({error: "User is blocked. Please contact customer support"});
             return;
         }
 

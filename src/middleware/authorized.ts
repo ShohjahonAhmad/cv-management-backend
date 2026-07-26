@@ -1,9 +1,9 @@
 import type { RequestHandler } from "express";
 import { Role } from "../../generated/prisma/enums.js";
 
-const authorized = (role: Role): RequestHandler => {
+const authorized = (roles: Role[]): RequestHandler => {
     return  (req, res, next) => {
-        if(role !== req.user.role){
+        if(!roles.includes(req.user.role)){
             res.status(403).json({error: "Forbidden"});
             return;
         }

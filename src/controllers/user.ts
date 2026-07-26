@@ -92,3 +92,22 @@ export const deleteUsers: RequestHandler = async (req, res, next) => {
 
     res.json({ conflicts, changeCount: change.count, count: users.length });
 }
+
+export const getMe: RequestHandler = async (req, res, next) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            id: req.user?.id
+        },
+        select:{
+            firstName: true,
+            lastName: true,
+            role: true,
+        }
+    });
+
+    if(!user) {
+        return res.status(404).json({message: "User not found"});
+    }
+
+    res.json(user);
+}

@@ -1,10 +1,10 @@
-import type { RequestHandler } from "express";
 import prisma from "../prisma.js";
-import { CVStatus, Prisma, Role } from "../../generated/prisma/client.js";
-import type { CVDto } from "../middleware/schema.js";
 import getValue from "../utils/getValue.js";
-import initializeCVsWhere from "../utils/initializeCVsWhere.js";
 import hasValue from "../utils/hasValues.js";
+import type { RequestHandler } from "express";
+import type { CVDto } from "../middleware/schema.js";
+import initializeCVsWhere from "../utils/initializeCVsWhere.js";
+import { CVStatus, Prisma, Role } from "../../generated/prisma/client.js";
 
 export const getCVs: RequestHandler = async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -130,28 +130,14 @@ export const getCVById: RequestHandler = async (req, res, next) => {
     const id = Number(req.params.id);
 
     const cv = await prisma.cV.findUnique({
-        where: {
-            id,
-        },
+        where: {id},
         include: {
             position: {
                 include: {
                     positionAttributes: true
                 }
             },
-            candidate: {
-                include: {
-                    attributeValues: {
-                        include: {
-                            attribute: {
-                                include: {
-                                    attributeOptions: true
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            candidate: true
         }
     });
 
@@ -165,8 +151,51 @@ export const getCVById: RequestHandler = async (req, res, next) => {
         return;
     }
 
-    const attributeValues = cv?.candidate.attributeValues.filter((value) => cv.position.positionAttributes.some((attr) => attr.attributeId === value.attributeId));
-    cv.candidate.attributeValues = [];
+    const attributeValues = await prisma.$transaction(async (tx) => {
+        const existing = await tx.attributeValue.findMany({
+            where: {
+                candidateId: cv.candidateId,
+                attributeId: {in: cv.position.positionAttributes.map(attr => attr.attributeId)}
+            },
+            include: {
+                attribute: {
+                    include: {
+                        attributeOptions: true
+                    }
+                },
+            }
+        })
+
+        const missing = cv.position.positionAttributes.filter(attr => !existing.some(value => value.attributeId === attr.attributeId));
+
+        if(missing.length > 0){
+            await tx.attributeValue.createMany({
+                data: missing.map(attr => ({
+                    candidateId: cv.candidateId,
+                    attributeId: attr.attributeId
+                })),
+                skipDuplicates: true,
+            })
+
+            return tx.attributeValue.findMany({
+                where: {
+                    candidateId: cv.candidateId,
+                    attributeId: {
+                        in: cv.position.positionAttributes.map(a => a.attributeId)
+                    },
+                },
+                include: {
+                    attribute: {
+                        include: {
+                            attributeOptions: true
+                        }
+                    },
+                }
+            });
+        }
+
+        return existing
+    })
 
     const canEdit = req.user.role === Role.ADMIN || req.user.id === cv.candidateId;
     res.json({cv, attributeValues, readOnly: !canEdit});
