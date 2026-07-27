@@ -12,7 +12,5 @@ router.put("/profile/:id", validation.validateId, candidateController.updateProf
 router.get("/profile/:id", validation.validateId, candidateController.getProfileById);
 router.post("/profile/avatar", upload.single("avatar"), candidateController.uploadAvatar);
 router.post("/profile/image/:attributeValueId", upload.single("image"), candidateController.uploadImageAttribute);
-router.get("/positions", candidateController.getPositions);
-router.get("/positions/:id", candidateController.getPositionById);
 
 export default router;

@@ -5,6 +5,7 @@ import tagRoute from "./routes/tags.js";
 import authRoute from "./routes/auth.js";
 import userRoute from "./routes/user.js";
 import statsRoute from "./routes/stats.js"
+import publicRoute from "./routes/public.js"
 import positionRoute from "./routes/positions.js"
 import candidateRoute from "./routes/candidate.js"
 import attributeRoute from "./routes/attributes.js"
@@ -23,8 +24,9 @@ app.use(express.json());
 app.use(cors())
 
 app.use("/auth", authRoute);
-app.use(authenticated);
+app.use("/public", publicRoute);
 app.use("/stats", statsRoute);
+app.use(authenticated);
 app.use("/cv", cvRoute);
 app.use("/tags", tagRoute);
 app.use("/users", userRoute);
