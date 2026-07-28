@@ -31,8 +31,6 @@ const optionalAuthenticated: RequestHandler = async (req, res, next) => {
             }
 
             req.user = user;
-            console.log(`User ${user.firstName} ${user.lastName} authenticated with role ${user.role}`);
-            console.log(req.user);
         }
         next();
     } catch(_) {

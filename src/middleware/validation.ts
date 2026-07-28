@@ -37,7 +37,6 @@ export const validateId: RequestHandler = (req, res, next) => {
 
 const validateBody = (schema: z.ZodType<any>): RequestHandler => (req, res, next) =>{
     const result = schema.safeParse(req.body);
-    console.log(result);
     if(!result.success) {
         res.status(400).json({error: result.error.issues.map(e => e.message).join(", ")});
         return;

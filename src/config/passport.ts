@@ -15,7 +15,6 @@ passport.use(
 
     async (_, __, profile, done) => {
         try {
-            console.log(profile)
             const user = await prisma.user.findUnique({
                 where: {
                     provider_providerUserId: {
@@ -70,7 +69,6 @@ passport.use(
     userEmailURL: "https://api.github.com/user/emails",
     },
     async (_:string, __:string, profile:any, done: any) => {
-        console.log(profile);
         try {
             const user = await prisma.user.findUnique({
                 where: {
