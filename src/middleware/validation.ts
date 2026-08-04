@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import z from "zod";
-import { CreateAttributeSchema, CreatePositionSchema, CVSchema, DeleteAttributeSchema, DeletePositionsSchema, DeleteUserSchema, ProfileSchema, SelectedAttributeSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
+import { CreateAttributeSchema, CreatePositionSchema, CVSchema, DeleteAttributeSchema, DeletePositionsSchema, DeleteUserSchema, ProfileSchema, SelectedAttributeSchema, SupportTicketSchema, UpdateAttributeSchema, UpdatePositionSchema, UpdateUserBlockSchema, UpdateUserRoleSchema } from "./schema.js";
 
 export const validateReqUser: RequestHandler = (req, res, next) => {
     if(!req.user){
@@ -37,7 +37,9 @@ export const validateId: RequestHandler = (req, res, next) => {
 
 const validateBody = (schema: z.ZodType<any>): RequestHandler => (req, res, next) =>{
     const result = schema.safeParse(req.body);
+    console.log(req.body)
     if(!result.success) {
+        console.log(result)
         res.status(400).json({error: result.error.issues.map(e => e.message).join(", ")});
         return;
     }
@@ -59,3 +61,4 @@ export const DeletePositions = validateBody(DeletePositionsSchema);
 export const UpdateProfile = validateBody(ProfileSchema);
 export const AddAttribute = validateBody(SelectedAttributeSchema);
 export const UpdateCV = validateBody(CVSchema);
+export const CreateSupportTicket = validateBody(SupportTicketSchema); 

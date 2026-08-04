@@ -3,8 +3,8 @@ import prisma from "../prisma.js";
 import type { ProfileDto, SelectedAttributeDto } from "../middleware/schema.js";
 import supabase from "../config/supabase.js";
 import { extensionMap } from "../middleware/multer.js";
-import { PositionLevel, Role, type Prisma } from "../../generated/prisma/client.js";
-import { isCompleted } from "../utils/isCompleted.js";
+import { Role, type Prisma } from "../../generated/prisma/client.js";
+import dbx from "../config/dropbox.js";
 
 const profileSelect = {
     id: true,
@@ -353,4 +353,37 @@ export const searchAttributes: RequestHandler = async (req, res) => {
     });
 
     res.json({attributes});
+}
+
+export const createSupportTicket: RequestHandler = async (req, res) => {
+    const {firstName, lastName, role} = req.user;
+    const {summary, priority, link, id} = req.body;
+    const adminGmail = process.env.ADMIN_GMAIL || "ahmshohjahon@gmail.com";
+    let positionTitle: null | string = null;
+    if(id) {
+        const position = await prisma.position.findUnique({
+            where: {id},
+            select: {title: true}
+        });
+        positionTitle = position?.title ?? null;
+    }
+
+    const ticket = {
+        reportedBy: `${firstName} ${lastName} (${role})`,
+        summary,
+        priority,
+        position: positionTitle ?? "General",
+        link,
+        admin: adminGmail,
+        createdAt: new Date().toISOString(),
+    }
+
+    const json = JSON.stringify(ticket, null, 2);
+
+    await dbx.filesUpload({
+        path: "/support-tickets/ticket-"+Date.now()+".json",
+        contents: json,
+    })
+
+    res.status(201).json({ticket});
 }

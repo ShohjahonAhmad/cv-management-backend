@@ -1,5 +1,6 @@
 import z from "zod";
 import { AttributeCategory, AttributeType, PositionLevel, Provider, Role } from "../../generated/prisma/enums.js";
+import { Priority } from "../types/support-ticket/SupportTicket.js";
 
 export const UserSchema = z.object({
     id: z.number().int().nonnegative(),
@@ -259,3 +260,10 @@ export const CVSchema = z.object({
 export type AttributeValueDto = z.infer<typeof AttributeValueSchema>;
 
 export type CVDto = z.infer<typeof CVSchema>;
+
+export const SupportTicketSchema = z.object({
+    summary: z.string().trim().min(1, "Summary is required").max(200, "Summary must be at most 200 characters"),
+    priority: z.enum(Priority),
+    id: z.number().int().positive("ID must be a positive integer").optional(),
+    link: z.url("Link must be a valid URL"),
+})

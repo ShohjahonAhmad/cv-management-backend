@@ -18,9 +18,8 @@ export const authCallback: RequestHandler = async (req, res) => {
     return res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`)
 }
 
-
 export const getMe: RequestHandler = async (req, res) => {
     const me = await prisma.user.findUnique({where: {id: req.user.id}});
 
-    res.json(me)///
+    res.json(me)
 }
